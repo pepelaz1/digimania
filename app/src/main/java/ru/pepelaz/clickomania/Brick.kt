@@ -3,10 +3,10 @@ package ru.pepelaz.clickomania
 /**
  * Created by pepel on 31.01.2018.
  */
-class Block {
+class Brick {
 
-    var state: BlockState = BlockState.Unclicked
-    var flag = false
+
+    var number: Int = 0
     init {
 
     }
