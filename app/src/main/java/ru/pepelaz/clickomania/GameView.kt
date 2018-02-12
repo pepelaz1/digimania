@@ -30,6 +30,12 @@ class GameView(context: Context) : View(context) {
     var lastTime: Long = 0
     var game: Game? = null
     var vibrateTimer: Timer? = null
+    var backColor = ContextCompat.getColor(context, R.color.background)
+    var aback: Int
+    var rback: Int
+    var gback: Int
+    var bback: Int
+    var avail = true
 
     init {
 
@@ -43,11 +49,16 @@ class GameView(context: Context) : View(context) {
             val resId = resources.getIdentifier("n" + n.toString(), "drawable", context.packageName)
             bmpNumbers.add(BitmapFactory.decodeResource(resources, resId))
         }
+
+        bback = backColor and 0xff
+        gback = (backColor shr 8) and 0xff
+        rback = (backColor shr 16) and 0xff
+        aback = (backColor shr 24) and 0xff
     }
 
     override fun draw(canvas: Canvas?) {
         super.draw(canvas)
-        canvas?.drawColor(ContextCompat.getColor(context, R.color.background))
+        canvas?.drawColor(backColor)
 
 
         if (game == null) {
@@ -83,7 +94,7 @@ class GameView(context: Context) : View(context) {
 
     fun drawBricks(canvas: Canvas?) {
         val game = game?:return
-         val srcRect = Rect(0, 0, bmpEmpty.width, bmpEmpty.height)
+        val srcRect = Rect(0, 0, bmpEmpty.width, bmpEmpty.height)
         for (i in 0..game.countX - 1) {
             for(j in 0..game.countY - 1) {
 
@@ -95,10 +106,9 @@ class GameView(context: Context) : View(context) {
                 val dstRect = Rect(x1, y1, x2, y2)
                 val num = game.brickNumber(i, j)
 
-                if (num == 0)
+                if (num == game.Empty)
                     canvas?.drawBitmap(bmpEmpty, srcRect, dstRect, paint)
                 else {
-
                     if (num == game.Explode) {
                         canvas?.drawBitmap(bmpTransform, srcRect, dstRect, paint)
                     } else
@@ -112,17 +122,13 @@ class GameView(context: Context) : View(context) {
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         val gameSafe = game ?: return true
 
-
         val i: Int = ((event?.x ?: 0f) / (blockWidth * dx)).toInt()
         val j: Int = ((event?.y ?: 0f) / (blockHeight * dy)).toInt()
-
 
         when (event?.action) {
 
             MotionEvent.ACTION_DOWN -> {
                 lastTime = currentTimeMillis()
-
-
 
 
                 vibrateTimer = Timer("vibrator", true)
@@ -142,18 +148,22 @@ class GameView(context: Context) : View(context) {
                 if (gameSafe.state == GameState.Continue) {
                     if (currentTimeMillis() - lastTime < longClickDuration) {
 
-                        bmpTransform = bmpNumbers[gameSafe.brickNumber(i,j)-1].copy(Bitmap.Config.ARGB_8888 , true)
+                        if (avail && gameSafe.brickNumber(i,j) != gameSafe.Empty) {
+                            avail = false
+                            bmpTransform = bmpNumbers[gameSafe.brickNumber(i, j) - 1].copy(Bitmap.Config.ARGB_8888, true)
 
-                        gameSafe.onShortClick(i, j)
-                        explode(i,j)
-                        when (gameSafe.state) {
-                            GameState.Win -> {
+                            gameSafe.onShortClick(i, j)
+                            explode(i, j)
+                            when (gameSafe.state) {
+                                GameState.Win -> {
 
+                                }
+                                GameState.Lose -> {
+
+                                }
+                                else -> {
+                                }
                             }
-                            GameState.Lose -> {
-
-                            }
-                            else -> {  }
                         }
                     } else {
 
@@ -168,14 +178,16 @@ class GameView(context: Context) : View(context) {
     fun explode(i:Int, j:Int) {
 
         var counter = 0
+        var total = 5
         Timer("explode", true).schedule(50,50) {
+            //Log.d("test_test","explode, counter: " + counter + ", total: " + total)
+            fadeOut(counter, total)
 
-            fadeOut()
-
-            if(counter == 5) {
+            if(counter == total) {
                 cancel()
                 if (game != null)
                     game!!.onExplodeEnd(i,j)
+                avail = true
             }
 
             counter++
@@ -183,7 +195,7 @@ class GameView(context: Context) : View(context) {
         }
     }
 
-    fun fadeOut()  {
+    fun fadeOut(curr: Int, total: Int)  {
         if (bmpTransform == null) return
 
         val width = bmpTransform!!.width
@@ -196,20 +208,22 @@ class GameView(context: Context) : View(context) {
         var g: Int
         var b: Int
 
-        val d = (255f / 5).toInt()
+
+        var kback: Float = curr.toFloat() / total.toFloat()
+        var k = (total - curr).toFloat() / total.toFloat()
+        var clr: Int
         for(i in 0..pixels.size-1) {
 
-            b = pixels[i] and 0xff
-            g = (pixels[i] shr 8) and 0xff
-            r = (pixels[i] shr 16) and 0xff
-            a = (pixels[i] shr 24) and 0xff
+            clr = pixels[i]
+            if (clr != backColor ) {
 
+                b = (kback * bback + k * (clr and 0xff)).toInt()
+                g = (kback * gback + k * ((clr ushr 8) and 0xff)).toInt()
+                r = (kback * rback + k * ((clr ushr 16) and 0xff)).toInt()
+                a = (kback * aback + k * ((clr ushr 24) and 0xff)).toInt()
 
-            a -= d
-            if (a < 0)
-                a = 0
-
-            pixels[i] = a and 0xff shl 24 or (r and 0xff shl 16) or (g and 0xff shl 8) or (b and 0xff)
+                pixels[i] = (a and 0xff shl 24) or (r and 0xff shl 16) or (g and 0xff shl 8) or (b and 0xff)
+            }
         }
 
         bmpTransform!!.setPixels(pixels,0, width, 0,0, width, height )
