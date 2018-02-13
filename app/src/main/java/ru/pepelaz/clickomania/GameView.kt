@@ -36,6 +36,7 @@ class GameView(context: Context) : View(context) {
     var gback: Int
     var bback: Int
     var avail = true
+    var fallDy: Float = 0f
 
     init {
 
@@ -106,13 +107,21 @@ class GameView(context: Context) : View(context) {
                 val dstRect = Rect(x1, y1, x2, y2)
                 val num = game.brickNumber(i, j)
 
-                if (num == game.Empty)
-                    canvas?.drawBitmap(bmpEmpty, srcRect, dstRect, paint)
-                else {
-                    if (num == game.Explode) {
-                        canvas?.drawBitmap(bmpTransform, srcRect, dstRect, paint)
-                    } else
-                        canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                if(game.brickIsFalling(i,j)) {
+                    dstRect.top += fallDy.toInt()
+                    dstRect.bottom += fallDy.toInt()
+                    canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                } else {
+                    if (num == game.Empty  ) {
+                        if (j < 1 || !game.brickIsFalling(i,j - 1))
+                             canvas?.drawBitmap(bmpEmpty, srcRect, dstRect, paint)
+                    }
+                    else {
+                        if (num == game.Explode) {
+                            canvas?.drawBitmap(bmpTransform, srcRect, dstRect, paint)
+                        } else
+                            canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                    }
                 }
             }
         }
@@ -153,16 +162,20 @@ class GameView(context: Context) : View(context) {
                             bmpTransform = bmpNumbers[gameSafe.brickNumber(i, j) - 1].copy(Bitmap.Config.ARGB_8888, true)
 
                             gameSafe.onShortClick(i, j)
-                            explode(i, j)
-                            when (gameSafe.state) {
-                                GameState.Win -> {
-
-                                }
-                                GameState.Lose -> {
-
-                                }
-                                else -> {
-                                }
+                            if (gameSafe.brickNumber(i,j) == gameSafe.Explode) {
+                                explode(i, j)
+//                                when (gameSafe.state) {
+//                                    GameState.Win -> {
+//
+//                                    }
+//                                    GameState.Lose -> {
+//
+//                                    }
+//                                    else -> {
+//                                    }
+//                                }
+                            } else {
+                                avail = true
                             }
                         }
                     } else {
@@ -176,18 +189,17 @@ class GameView(context: Context) : View(context) {
     }
 
     fun explode(i:Int, j:Int) {
-
         var counter = 0
-        var total = 5
+        val total = 5
         Timer("explode", true).schedule(50,50) {
             //Log.d("test_test","explode, counter: " + counter + ", total: " + total)
             fadeOut(counter, total)
 
             if(counter == total) {
                 cancel()
-                if (game != null)
-                    game!!.onExplodeEnd(i,j)
-                avail = true
+                game!!.onExplodeEnd(i, j)
+                postInvalidate()
+                fall()
             }
 
             counter++
@@ -227,6 +239,37 @@ class GameView(context: Context) : View(context) {
         }
 
         bmpTransform!!.setPixels(pixels,0, width, 0,0, width, height )
+    }
+
+    fun fall() {
+        // Falling bricks after explosion
+        if (game == null) {
+            avail = true
+            return
+        }
+
+        game!!.markFalling()
+        fallDy = 0f
+        val total = 5
+        var counter = 0
+        val k = blockHeight * dy / total.toFloat()
+        Timer("fall", true).schedule(50,50) {
+
+            fallDy += k
+            if(counter == total - 1) {
+                game!!.fallRowDown()
+                if (!game!!.markFalling()) {
+                    cancel()
+                    avail = true
+                }
+                counter = 0
+                fallDy = 0f
+            }
+            else
+                counter++
+            postInvalidate()
+
+        }
     }
 
 }

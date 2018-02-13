@@ -1,6 +1,7 @@
 package ru.pepelaz.clickomania
 
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.math.E
 
 
@@ -13,6 +14,7 @@ class Game {
     var countX: Int private set
     var countY: Int private set
     private val bricks: ArrayList<ArrayList<Brick>> = ArrayList()
+    private var fallingCols: ArrayList<Int> = ArrayList()
 
     val Empty = 0
     val Explode = -1
@@ -42,15 +44,17 @@ class Game {
         return bricks[i][j].number
     }
 
-    fun makeEmpty(i: Int, j: Int) {
-        bricks[i][j].number = 0
+
+    fun brickIsFalling(i: Int, j: Int): Boolean {
+        return bricks[i][j].falling
     }
+
 
 
     fun onShortClick(i: Int, j :Int)  {
         val value = bricks[i][j].number
-        bricks[i][j].number = Explode
-        exploreBricks(i,j, value, Explode)
+        if (exploreBricks(i,j, value, Explode))
+            bricks[i][j].number = Explode
     }
 
     fun onExplodeEnd(i: Int, j: Int) {
@@ -58,10 +62,12 @@ class Game {
         exploreBricks(i,j, Explode, Empty)
     }
 
-    fun exploreBricks(i: Int, j: Int, src: Int, dst: Int) {
+    fun exploreBricks(i: Int, j: Int, src: Int, dst: Int): Boolean {
 
+        var found = false
         if (i - 1 >= 0) {
             if (bricks[i - 1][j].number == src) {
+                found = true
                 bricks[i - 1][j].number = dst
                 exploreBricks(i - 1, j, src, dst)
             }
@@ -69,6 +75,7 @@ class Game {
 
         if (i + 1 <= countX - 1) {
             if (bricks[i + 1][j].number == src) {
+                found = true
                 bricks[i + 1][j].number = dst
                 exploreBricks(i + 1, j, src, dst)
             }
@@ -76,6 +83,7 @@ class Game {
 
         if (j - 1 >= 0) {
             if (bricks[i][j - 1].number == src) {
+                found = true
                 bricks[i][j - 1].number = dst
                 exploreBricks(i, j - 1, src, dst)
             }
@@ -83,11 +91,52 @@ class Game {
 
         if (j + 1 <= countY - 1) {
             if (bricks[i][j + 1].number == src) {
+                found = true
                 bricks[i][j + 1].number = dst
                 exploreBricks(i, j + 1, src, dst)
             }
         }
+        return found
     }
 
+    fun markFalling(): Boolean {
+        // Find colums to fall
+        fallingCols = findFallingCols()
+        for (i in 0..fallingCols.size-1) {
+            for(j in countY-2 downTo 0) {
+
+                if ((bricks[fallingCols[i]][j+1].number == Empty || bricks[fallingCols[i]][j+1].falling)
+                        && bricks[fallingCols[i]][j].number != Empty) {
+                    bricks[fallingCols[i]][j].falling = true
+                }
+            }
+        }
+        return fallingCols.size > 0
+    }
+
+    fun findFallingCols() : ArrayList<Int> {
+        val res = ArrayList<Int>()
+        for (i in 0..countX - 1) {
+            for (j in 1..countY - 1) {
+                if (bricks[i][j].number == Empty && bricks[i][j-1].number != Empty) {
+                    res.add(i)
+                    break
+                }
+            }
+        }
+        return res
+    }
+
+    fun fallRowDown() {
+        for (i in 0..fallingCols.size-1) {
+            for(j in countY - 1 downTo 1) {
+                if (bricks[fallingCols[i]][j-1].falling){
+                    bricks[fallingCols[i]][j].number = bricks[fallingCols[i]][j-1].number
+                    bricks[fallingCols[i]][j-1].falling = false
+                    bricks[fallingCols[i]][j-1].number = Empty
+                }
+            }
+        }
+    }
 
 }

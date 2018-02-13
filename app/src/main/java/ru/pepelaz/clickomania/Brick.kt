@@ -7,6 +7,7 @@ class Brick {
 
 
     var number: Int = 0
+    var falling: Boolean = false
     init {
 
     }
