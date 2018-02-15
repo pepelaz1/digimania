@@ -9,6 +9,7 @@ import android.content.Context.VIBRATOR_SERVICE
 import android.os.Vibrator
 import android.support.v4.content.ContextCompat
 import android.util.Log
+import android.widget.Toast
 import java.util.*
 import kotlin.concurrent.schedule
 
@@ -22,14 +23,11 @@ class GameView(context: Context) : View(context) {
     val bmpEmpty: Bitmap
     val bmpNumbers = ArrayList<Bitmap>()
     var bmpTransform: Bitmap? = null
-    val longClickDuration = 300
     var dx: Float = 0f
     var dy: Float  = 0f
     var blockWidth = 0
     var blockHeight = 0
-    var lastTime: Long = 0
     var game: Game? = null
-    var vibrateTimer: Timer? = null
     var backColor = ContextCompat.getColor(context, R.color.background)
     var aback: Int
     var rback: Int
@@ -143,49 +141,23 @@ class GameView(context: Context) : View(context) {
         when (event?.action) {
 
             MotionEvent.ACTION_DOWN -> {
-                lastTime = currentTimeMillis()
-
-
-                vibrateTimer = Timer("vibrator", true)
-                vibrateTimer!!.schedule(300) {
-                    val v: Vibrator = context.getSystemService(VIBRATOR_SERVICE) as Vibrator
-                    v.vibrate(100)
-                }
 
             }
             MotionEvent.ACTION_UP -> {
-                if (vibrateTimer != null) {
-                    vibrateTimer!!.cancel()
-                    vibrateTimer = null
-                }
 
 
                 if (gameSafe.state == GameState.Continue) {
-                    if (currentTimeMillis() - lastTime < longClickDuration) {
 
-                        if (avail && gameSafe.brickNumber(i,j) != gameSafe.Empty) {
-                            avail = false
-                            bmpTransform = bmpNumbers[gameSafe.brickNumber(i, j) - 1].copy(Bitmap.Config.ARGB_8888, true)
+                    if (avail && gameSafe.brickNumber(i,j) != gameSafe.Empty) {
+                        avail = false
+                        bmpTransform = bmpNumbers[gameSafe.brickNumber(i, j) - 1].copy(Bitmap.Config.ARGB_8888, true)
 
-                            gameSafe.onShortClick(i, j)
-                            if (gameSafe.brickNumber(i,j) == gameSafe.Explode) {
-                                explode(i, j)
-//                                when (gameSafe.state) {
-//                                    GameState.Win -> {
-//
-//                                    }
-//                                    GameState.Lose -> {
-//
-//                                    }
-//                                    else -> {
-//                                    }
-//                                }
-                            } else {
-                                avail = true
-                            }
+                        gameSafe.onShortClick(i, j)
+                        if (gameSafe.brickNumber(i,j) == gameSafe.Explode) {
+                            explode(i, j)
+                        } else {
+                            avail = true
                         }
-                    } else {
-
                     }
                     invalidate()
                 }
@@ -198,13 +170,14 @@ class GameView(context: Context) : View(context) {
         var counter = 0
         val total = 5
         Timer("explode", true).schedule(50,50) {
-            //Log.d("test_test","explode, counter: " + counter + ", total: " + total)
+
             fadeOut(counter, total)
 
             if(counter == total) {
                 cancel()
                 game!!.onExplodeEnd(i, j)
                 postInvalidate()
+                //Log.d("test_test","cancel explode timer")
                 fall()
             }
 
@@ -254,13 +227,14 @@ class GameView(context: Context) : View(context) {
         val total = 5
         var counter = 0
         val k = blockHeight * dy / total.toFloat()
-        Timer("fall", true).schedule(50,50) {
+        Timer("fall", true).schedule(30,30) {
 
             fallDy += k
             if(counter == total - 1) {
                 game!!.fallRowDown()
                 if (!game!!.markFalling()) {
                     cancel()
+                    //Log.d("test_test","cancel fall timer")
                     shift()
                 }
                 counter = 0
@@ -276,6 +250,10 @@ class GameView(context: Context) : View(context) {
     fun shift() {
         // Shift bricks after falling
         if (!game!!.markShifting()){
+            game!!.checkIfFinished()
+            if (game!!.state == GameState.Finish) {
+                Log.d("test_test", "Finish")
+            }
             avail = true
             return
         }
@@ -284,14 +262,19 @@ class GameView(context: Context) : View(context) {
         val total = 5
         var counter = 0
         val k = blockWidth * dx / total.toFloat()
-        Timer("shift", true).schedule(50,50) {
-
+        Timer("shift", true).schedule(30,30) {
+            //Log.d("test_test", "counter:" + counter + ", total:" + total)
             shiftDx += k
             if(counter == total - 1) {
                 game!!.shiftColLeft()
-                if (!game!!.markShifting()) {
+                if (!game!!.markShifting() ) {
                     cancel()
                     avail = true
+
+                    game!!.checkIfFinished()
+                    if (game!!.state == GameState.Finish)
+                       Log.d("test_test","Finish")
+                   // Log.d("test_test","cancel shift timer")
                 }
                 counter = 0
                 shiftDx = 0f

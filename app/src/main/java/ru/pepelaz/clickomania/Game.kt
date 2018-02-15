@@ -1,5 +1,6 @@
 package ru.pepelaz.clickomania
 
+import android.util.Log
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.math.E
@@ -153,6 +154,8 @@ class Game {
                 }
             }
         }
+        //Log.d("test_test", "mark shifting result: " + (emptyCols.size > 0))
+        //checkIfFinished()
         return emptyCols.size > 0
     }
 
@@ -198,6 +201,32 @@ class Game {
                 }
             }
         }
+    }
+
+    fun checkIfFinished() {
+        var found = false
+        for(i in 0..countX - 1) {
+            val ii = i
+            for(j in countY-1 downTo 0) {
+                val jj = j
+                if (bricks[i][j].number != Empty) {
+                    if ((i + 1 <= countX - 1) && (bricks[i][j].number == bricks[i + 1][j].number)) {
+                        found = true
+                        break
+                    }
+                    if ((j + 1 <= countY - 1) && (bricks[i][j].number == bricks[i][j + 1].number)) {
+                        found = true
+                        break
+                    }
+                }
+            }
+            if (found)
+                break
+        }
+
+        if (!found)
+            state = GameState.Finish
+
     }
 
 }
