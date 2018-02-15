@@ -4,11 +4,7 @@ package ru.pepelaz.clickomania
  * Created by pepel on 31.01.2018.
  */
 class Brick {
-
-
-    var number: Int = 0
-    var falling: Boolean = false
-    init {
-
-    }
+    var number  = 0
+    var falling  = false
+    var shitfing  = false
 }

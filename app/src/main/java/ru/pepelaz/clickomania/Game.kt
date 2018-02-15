@@ -15,6 +15,7 @@ class Game {
     var countY: Int private set
     private val bricks: ArrayList<ArrayList<Brick>> = ArrayList()
     private var fallingCols: ArrayList<Int> = ArrayList()
+    private var emptyCols: ArrayList<Int> = ArrayList()
 
     val Empty = 0
     val Explode = -1
@@ -35,20 +36,17 @@ class Game {
         }
     }
 
-    init {
-
-    }
-
-
     fun brickNumber(i: Int, j: Int): Int {
         return bricks[i][j].number
     }
-
 
     fun brickIsFalling(i: Int, j: Int): Boolean {
         return bricks[i][j].falling
     }
 
+    fun brickIsShifting(i: Int, j: Int): Boolean {
+        return bricks[i][j].shitfing
+    }
 
 
     fun onShortClick(i: Int, j :Int)  {
@@ -134,6 +132,69 @@ class Game {
                     bricks[fallingCols[i]][j].number = bricks[fallingCols[i]][j-1].number
                     bricks[fallingCols[i]][j-1].falling = false
                     bricks[fallingCols[i]][j-1].number = Empty
+                }
+            }
+        }
+    }
+
+    fun markShifting(): Boolean {
+        // Find rows to shift
+        emptyCols = findEmptyCols()
+        var b: Int
+        var e: Int
+        for (i in 0..emptyCols.size-1) {
+
+            b = emptyCols[i]+1
+            e = if (i == emptyCols.size - 1) countX else emptyCols[i+1]
+            for (k in b..e-1) {
+                for (j in 0..countY-1) {
+                    if (bricks[k][j].number != Empty)
+                        bricks[k][j].shitfing = true
+                }
+            }
+        }
+        return emptyCols.size > 0
+    }
+
+    fun findEmptyCols() : ArrayList<Int> {
+        val res = ArrayList<Int>()
+        var cond1 = true
+        var cond2 = false
+        for (i in 0..countX - 2) {
+            for (j in 0..countY - 1) {
+                if (bricks[i][j].number != Empty) {
+                    cond1 = false
+                    break
+                }
+
+                if(bricks[i][j].number == Empty && bricks[i+1][j].number != Empty) {
+                    cond2 = true
+                }
+            }
+            if (cond1 && cond2)
+                res.add(i)
+
+            cond1 = true
+            cond2 = false
+        }
+        return res
+    }
+
+
+    fun shiftColLeft() {
+        var b: Int
+        var e: Int
+        for (i in 0..emptyCols.size-1) {
+
+            b = emptyCols[i]+1
+            e = if (i == emptyCols.size - 1) countX else emptyCols[i+1]
+            for (k in b..e-1) {
+                for (j in 0..countY-1) {
+                    if (bricks[k][j].shitfing) {
+                        bricks[k-1][j].number = bricks[k][j].number
+                        bricks[k][j].number = Empty
+                        bricks[k][j].shitfing = false
+                    }
                 }
             }
         }

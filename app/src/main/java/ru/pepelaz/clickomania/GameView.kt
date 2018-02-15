@@ -37,6 +37,7 @@ class GameView(context: Context) : View(context) {
     var bback: Int
     var avail = true
     var fallDy: Float = 0f
+    var shiftDx: Float = 0f
 
     init {
 
@@ -107,7 +108,12 @@ class GameView(context: Context) : View(context) {
                 val dstRect = Rect(x1, y1, x2, y2)
                 val num = game.brickNumber(i, j)
 
-                if(game.brickIsFalling(i,j)) {
+                if (game.brickIsShifting(i,j)) {
+                    dstRect.left -= shiftDx.toInt()
+                    dstRect.right -= shiftDx.toInt()
+                    canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                }
+                else if (game.brickIsFalling(i,j)) {
                     dstRect.top += fallDy.toInt()
                     dstRect.bottom += fallDy.toInt()
                     canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
@@ -243,11 +249,6 @@ class GameView(context: Context) : View(context) {
 
     fun fall() {
         // Falling bricks after explosion
-        if (game == null) {
-            avail = true
-            return
-        }
-
         game!!.markFalling()
         fallDy = 0f
         val total = 5
@@ -260,10 +261,40 @@ class GameView(context: Context) : View(context) {
                 game!!.fallRowDown()
                 if (!game!!.markFalling()) {
                     cancel()
-                    avail = true
+                    shift()
                 }
                 counter = 0
                 fallDy = 0f
+            }
+            else
+                counter++
+            postInvalidate()
+
+        }
+    }
+
+    fun shift() {
+        // Shift bricks after falling
+        if (!game!!.markShifting()){
+            avail = true
+            return
+        }
+
+        shiftDx = 0f
+        val total = 5
+        var counter = 0
+        val k = blockWidth * dx / total.toFloat()
+        Timer("shift", true).schedule(50,50) {
+
+            shiftDx += k
+            if(counter == total - 1) {
+                game!!.shiftColLeft()
+                if (!game!!.markShifting()) {
+                    cancel()
+                    avail = true
+                }
+                counter = 0
+                shiftDx = 0f
             }
             else
                 counter++
