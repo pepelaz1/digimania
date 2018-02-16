@@ -17,6 +17,7 @@ class Game {
     private val bricks: ArrayList<ArrayList<Brick>> = ArrayList()
     private var fallingCols: ArrayList<Int> = ArrayList()
     private var emptyCols: ArrayList<Int> = ArrayList()
+    private var matrixRow: ArrayList<Int> = ArrayList()
 
     val Empty = 0
     val Explode = -1
@@ -28,14 +29,15 @@ class Game {
 
         for (i in 0..countX - 1) {
             val row: ArrayList<Brick> = ArrayList()
-            for(j in 0..countY - 1) {
+            for(j in 0..countY) {
                 val brick = Brick()
                 brick.number = Random().nextInt(5) + 1
                 row.add(brick)
             }
             bricks.add(row)
+            matrixRow.add(-1);
         }
-    }
+     }
 
     fun brickNumber(i: Int, j: Int): Int {
         return bricks[i][j].number
@@ -47,6 +49,10 @@ class Game {
 
     fun brickIsShifting(i: Int, j: Int): Boolean {
         return bricks[i][j].shitfing
+    }
+
+    fun brickInMatrix(i: Int, j: Int): Boolean {
+        return bricks[i][j].matrix
     }
 
 
@@ -206,9 +212,7 @@ class Game {
     fun checkIfFinished() {
         var found = false
         for(i in 0..countX - 1) {
-            val ii = i
-            for(j in countY-1 downTo 0) {
-                val jj = j
+             for(j in countY-1 downTo 0) {
                 if (bricks[i][j].number != Empty) {
                     if ((i + 1 <= countX - 1) && (bricks[i][j].number == bricks[i + 1][j].number)) {
                         found = true
@@ -229,4 +233,32 @@ class Game {
 
     }
 
+    fun generateMatrix() {
+        for (i in 0..countX - 1) {
+            if (matrixRow[i] == -1){
+                val n = Random().nextInt(5)
+                if (n == 0) {
+                    matrixRow[i] = 0
+                }
+            } else {
+                if (matrixRow[i] < countY)
+                     matrixRow[i]++
+            }
+        }
+
+        for (i in 0..countX - 1) {
+            if (matrixRow[i] > -1) {
+                for (j in  matrixRow[i] downTo  1) {
+                    bricks[i][j].number = bricks[i][j - 1].number
+                    bricks[i][j].matrix = true
+                }
+            }
+        }
+        for (i in 0..countX-1) {
+            if (matrixRow[i] > -1) {
+                bricks[i][0].number = Random().nextInt(5) + 1
+                bricks[i][0].matrix = true
+            }
+        }
+    }
 }

@@ -34,8 +34,10 @@ class GameView(context: Context) : View(context) {
     var gback: Int
     var bback: Int
     var avail = true
-    var fallDy: Float = 0f
-    var shiftDx: Float = 0f
+    var fallDy = 0f
+    var shiftDx = 0f
+    var finishTimer: Timer? = null
+    var finishDy = 0f
 
     init {
 
@@ -90,47 +92,73 @@ class GameView(context: Context) : View(context) {
         dy = canvasHeight.toFloat() / actualHeight
     }
 
-
-
     fun drawBricks(canvas: Canvas?) {
         val game = game?:return
         val srcRect = Rect(0, 0, bmpEmpty.width, bmpEmpty.height)
-        for (i in 0..game.countX - 1) {
-            for(j in 0..game.countY - 1) {
 
-                val x1 = (i * blockWidth * dx).toInt()
-                val y1 = (j * blockHeight * dy).toInt()
-                val x2 = ((i+1) * blockWidth * dx).toInt()
-                val y2 = ((j+1) *  blockHeight * dy).toInt()
+        if (game.state == GameState.Continue) {
+            for (i in 0..game.countX - 1) {
+                for(j in 0..game.countY - 1) {
 
-                val dstRect = Rect(x1, y1, x2, y2)
-                val num = game.brickNumber(i, j)
+                    val x1 = (i * blockWidth * dx).toInt()
+                    val y1 = (j * blockHeight * dy).toInt()
+                    val x2 = ((i+1) * blockWidth * dx).toInt()
+                    val y2 = ((j+1) *  blockHeight * dy).toInt()
 
-                if (game.brickIsShifting(i,j)) {
-                    dstRect.left -= shiftDx.toInt()
-                    dstRect.right -= shiftDx.toInt()
-                    canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
-                }
-                else if (game.brickIsFalling(i,j)) {
-                    dstRect.top += fallDy.toInt()
-                    dstRect.bottom += fallDy.toInt()
-                    canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
-                } else {
-                    if (num == game.Empty  ) {
-                        if (j < 1 || !game.brickIsFalling(i,j - 1))
-                             canvas?.drawBitmap(bmpEmpty, srcRect, dstRect, paint)
-                    }
-                    else {
-                        if (num == game.Explode) {
-                            canvas?.drawBitmap(bmpTransform, srcRect, dstRect, paint)
-                        } else
-                            canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                    val dstRect = Rect(x1, y1, x2, y2)
+                    val num = game.brickNumber(i, j)
+
+
+                    if (game.brickIsShifting(i, j)) {
+                        dstRect.left -= shiftDx.toInt()
+                        dstRect.right -= shiftDx.toInt()
+                        canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                    } else if (game.brickIsFalling(i, j)) {
+                        dstRect.top += fallDy.toInt()
+                        dstRect.bottom += fallDy.toInt()
+                        canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                    } else {
+                        if (num == game.Empty) {
+                            if (j < 1 || !game.brickIsFalling(i, j - 1))
+                                canvas?.drawBitmap(bmpEmpty, srcRect, dstRect, paint)
+                        } else {
+                            if (num == game.Explode) {
+                                canvas?.drawBitmap(bmpTransform, srcRect, dstRect, paint)
+                            } else
+                                canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                        }
                     }
                 }
             }
-        }
-    }
+        } else if (game.state == GameState.Finish) {
+            for (i in 0..game.countX - 1) {
+                for(j in 0..game.countY) {
 
+                    val x1 = (i * blockWidth * dx).toInt()
+                    val y1 = (j * blockHeight * dy).toInt()
+                    val x2 = ((i+1) * blockWidth * dx).toInt()
+                    val y2 = ((j+1) *  blockHeight * dy).toInt()
+
+
+                    val dstRect = Rect(x1, y1, x2, y2)
+                    val num = game.brickNumber(i, j)
+
+                    if (game.brickInMatrix(i,j)) {
+                        dstRect.top -= finishDy.toInt()
+                        dstRect.bottom -= finishDy.toInt()
+                        canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                    } else {
+                        if (num == game.Empty)
+                            canvas?.drawBitmap(bmpEmpty, srcRect, dstRect, paint)
+                        else
+                            canvas?.drawBitmap(bmpNumbers[num - 1], srcRect, dstRect, paint)
+                    }
+
+                }
+            }
+        }
+
+    }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         val gameSafe = game ?: return true
@@ -159,6 +187,14 @@ class GameView(context: Context) : View(context) {
                             avail = true
                         }
                     }
+                    invalidate()
+                } else if (gameSafe.state == GameState.Finish) {
+                    if (finishTimer != null) {
+                        finishTimer!!.cancel()
+                        finishTimer = null
+                    }
+
+                    game = null
                     invalidate()
                 }
             }
@@ -252,7 +288,7 @@ class GameView(context: Context) : View(context) {
         if (!game!!.markShifting()){
             game!!.checkIfFinished()
             if (game!!.state == GameState.Finish) {
-                Log.d("test_test", "Finish")
+                finish();
             }
             avail = true
             return
@@ -273,8 +309,7 @@ class GameView(context: Context) : View(context) {
 
                     game!!.checkIfFinished()
                     if (game!!.state == GameState.Finish)
-                       Log.d("test_test","Finish")
-                   // Log.d("test_test","cancel shift timer")
+                        finish()
                 }
                 counter = 0
                 shiftDx = 0f
@@ -283,6 +318,36 @@ class GameView(context: Context) : View(context) {
                 counter++
             postInvalidate()
 
+        }
+    }
+
+    fun finish() {
+        val game = game?:return
+
+        game.generateMatrix()
+        val total = 10
+        var counter = 0
+        val k = blockHeight * dy / total.toFloat()
+        finishDy = k * total
+       // finishDy = 0f
+
+        finishTimer = Timer("finish", true)
+        finishTimer!!.schedule(30,30) {
+            //Log.d("test_test", "Finish timer")
+
+            if(counter == total - 1) {
+
+                game.generateMatrix()
+                counter = 0
+                finishDy = k * total
+                //finishDy =  0f
+            }
+            else
+                counter++
+            postInvalidate()
+
+            finishDy -= k
+            //finishDy += k
         }
     }
 

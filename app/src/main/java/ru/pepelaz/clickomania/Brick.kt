@@ -7,4 +7,5 @@ class Brick {
     var number  = 0
     var falling  = false
     var shitfing  = false
+    var matrix = false
 }
